@@ -131,9 +131,11 @@ class Scraper:
 
     def scrape_url_loop(self):
         urls=self.etr.xpath('//div[@id="play_0"]/ul/li/a/@href')
+        Tools.fg(20)
         for i in urls:
             self.work_queue.put(i)
         print("进程分配完成")
+        Tools.fg(10)
 
     def debug(self):
         print(self.url)
