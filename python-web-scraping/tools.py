@@ -53,7 +53,7 @@ class Tools:
         secrets =[
             '//div[contains(@class,"content") or contains(@id,"content") and count(.//p) > 10]/p/text()',
             '//div[contains(@class,"neirong") or contains(@id,"neirong") and count(.//p) > 10]/p/text()',
-            '//div[count(.//p > 12)]/p/count'  #最宽泛搜寻
+            '//div[count(.//p > 10)]/p/count'  #最宽泛搜寻
 
         ]
         content=""
@@ -71,9 +71,9 @@ class Tools:
 
     @staticmethod
     def scrape_title(etr:any)-> any:
-        secrets = [
+        secrets:list[str] = [
             '//h1[contains(@class,"title") or contains(@id,"title") and contains(text(),"第")]/p/text()',
-            '//h1[contains(@class,"biaoti") or contains(@id,"biaoti") and contains(text(),"第"]/p/text()',
+            '//h1[contains(@class,"biaoti") or contains(@id,"biaoti") and contains(text(),"第")]/p/text()',
             '//dev[contains(text(),"第") and contains(text(),"章")]/text()',  # 最宽泛搜寻
             '//h1[contains(text(),"第") and contains(text(),"章")]/text()',  # 最宽泛搜寻
             '//dev[contains(text(),"第") and contains(text(),"卷")]/text()',  # 最宽泛搜寻
@@ -93,13 +93,13 @@ class Tools:
 class ChapterUrlExtractor:
     def __init__(self,url:str):
         # 识别策略
-        self.strategies = [self.strategy_first,self.strategy_second]
+        self.strategies:list = [self._strategy_first,self._strategy_second]
 
         # 书籍信息
-        self.meta_title = ""
-        self.meta_author = ""
+        self.meta_title:str = ""
+        self.meta_author:str = ""
 
-        self.headers = {
+        self.headers:dict[str:str] = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
 
@@ -176,6 +176,7 @@ class ChapterUrlExtractor:
                 try:
                     urls = strategy()
                     if urls:
+                        print(urls)
                         return self.meta_title, urls
                     else:
                         continue
@@ -191,11 +192,12 @@ class ChapterUrlExtractor:
 
     """策略1:检索常用目录类名称或id名称"""
 
-    def strategy_first(self) -> list | None:
+    def _strategy_first(self) -> list | None:
         urls=[]
         secrets=[
             '//ul[@id="chapter-list" and count(.//a)>20]//a/@href',
             '//div[@id="play_0" and count(.//a)>20]//a/@href',
+            '//div[.//a[contains(text(),"第") or contains(text(),"卷") or contains(text(),"章")] and count(.//a)>20]//a/@href',
             '//ul[.//a[contains(text(),"第") or contains(text(),"卷") or contains(text(),"章")] and count(.//a)>20]//a/@href',
             '//dl[.//a[contains(text(),"第") or contains(text(),"卷") or contains(text(),"章")] and count(.//a)>20]//a/@href',
         ]
@@ -214,7 +216,7 @@ class ChapterUrlExtractor:
     """策略2:利用最后一章节url寻找包含所有章节url的父盒子"""
 
     # 返回urls列表或None
-    def strategy_second(self) -> list | None:
+    def _strategy_second(self) -> list | None:
         try:
             # print(self.meta_lastest_url)
 

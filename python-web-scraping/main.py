@@ -22,7 +22,7 @@ class WorkerThread(threading.Thread):
 
 
 
-    def run(self):
+    def run(self) -> None:
         print(f"进程 {self.thread_id} 启动成功")
         while not self.stop_event.is_set():
             try:
@@ -70,7 +70,7 @@ class Scraper:
         self.threads = []
         try:
             for i in range(t):
-                thread = WorkerThread(i + 1,novel_folder, self.work_queue,self.stop_event)
+                thread = WorkerThread(i + 1,self.book_title, self.work_queue,self.stop_event)
                 thread.start()
                 self.threads.append(thread)
         except Exception as e:
@@ -80,13 +80,15 @@ class Scraper:
 
     def scrape_init(self) -> bool:
         self.url=input("首页url:")
-        extractor = ChapterUrlExtractor(self.url)
-        extractor_result=extractor.main()
 
-        self.book_title = extractor_result[0]
-        self.urls=extractor_result[1]
+
+
 
         try:
+            extractor = ChapterUrlExtractor(self.url)
+            extractor_result = extractor.main()
+            self.book_title = extractor_result[0]
+            self.urls = extractor_result[1]
             os.makedirs(self.book_title, exist_ok=True)
             print("初始化成功")
             Tools.fg(30)
