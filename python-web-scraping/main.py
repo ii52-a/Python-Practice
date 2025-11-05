@@ -7,7 +7,10 @@ import os
 import threading
 import queue
 import time
-from tools import Tools
+
+
+from tools import Tools, ChapterUrlExtractor
+
 
 class WorkerThread(threading.Thread):
     def __init__(self,thread_id,novel_folder,work_queue,stop_event):
@@ -26,10 +29,11 @@ class WorkerThread(threading.Thread):
                 #获取任务url
                 url=self.work_queue.get(timeout=1)
                 #标定任务etree
+                etr = Tools.get(url)
                 """获取信息"""
-                etr=Tools.get(url)
-                info = '\n\n'.join(etr.xpath('//div[@id="content"]/p/text()')[2:])
-                title = Tools.clean_filename(etr.xpath('string(//div[contains(@class,"m-title")])').strip())
+
+                info = '\n\n'.join(Tools.scrape_content(etr))
+                title = Tools.clean_filename(Tools.scrape_title(etr)).strip()
                 file_path = os.path.join(self.novel_folder, f'{title}.txt')
 
                 """保存章节"""
@@ -50,7 +54,7 @@ class Scraper:
 
 
     def __init__(self):
-        self.url = None
+        self.urls = None
         self.url = ""
 
         self.etr = None
@@ -62,7 +66,7 @@ class Scraper:
 
 
 
-    def thread_create(self,t=5,novel_folder=""):
+    def thread_create(self,t:int=5,novel_folder:str="") -> None:
         self.threads = []
         try:
             for i in range(t):
@@ -74,8 +78,13 @@ class Scraper:
         print(f"\n{t}进程创建成功")
         Tools.fg()
 
-    def scrape_init(self):
+    def scrape_init(self) -> bool:
+        self.url=input("首页url:")
+        extractor = ChapterUrlExtractor(self.url)
+        extractor_result=extractor.main()
 
+        self.book_title = extractor_result[0]
+        self.urls=extractor_result[1]
 
         try:
             os.makedirs(self.book_title, exist_ok=True)
@@ -86,15 +95,17 @@ class Scraper:
             print("初始化失败:"+str(e))
             return False
 
-    def scrape_url_loop(self):
-        urls=self.etr.xpath('//div[@id="play_0"]/ul/li/a/@href')
+    def scrape_url_loop(self) -> None:
+        self.thread_create(10)
+
         Tools.fg(20)
-        for i in urls:
+        for i in self.urls:
             self.work_queue.put(i)
         print("进程分配完成")
+
         Tools.fg(10)
 
-    def debug(self):
+    def debug(self) -> None:
         print(self.url)
         print(self.book_title)
 

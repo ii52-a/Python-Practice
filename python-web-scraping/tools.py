@@ -24,14 +24,14 @@ class Tools:
         return re.sub(illegal_chars, ',', filename)
 
     @staticmethod
-    def get(url,retry_count:int=3)->etree.Element | None:
+    def get(url,retry_count:int=3)-> any:
         for attempt in range(retry_count):
             try:
                 response = requests.get(url, headers=Tools.headers, timeout=10)
                 response.encoding = "utf-8"
                 response.raise_for_status()
                 detect_result = chardet.detect(response.content)  # 检测编码自动处理
-                actual_encoding = detect_result['encoding']  # 获得自动编码后的编码形式
+                actual_encoding = detect_result['encoding'] or 'utf-8'  # 获得自动编码后的编码形式
                 html_text = response.content.decode(actual_encoding, errors='replace')
 
                 html = etree.HTML(html_text)
@@ -48,8 +48,50 @@ class Tools:
         else:
             return False
 
+    @staticmethod
+    def scrape_content(etr:any)-> any:
+        secrets =[
+            '//div[contains(@class,"content") or contains(@id,"content") and count(.//p) > 10]/p/text()',
+            '//div[contains(@class,"neirong") or contains(@id,"neirong") and count(.//p) > 10]/p/text()',
+            '//div[count(.//p > 12)]/p/count'  #最宽泛搜寻
+
+        ]
+        content=""
+        try:
+            for secret in secrets:
+                content=etr.xpath(secret)
+                if content:
+                    return content
+            else:
+                return None
+        except Exception as e:
+            Tools.fg(20)
+            print("文章截错误>>"+str(e))
+            return None
+
+    @staticmethod
+    def scrape_title(etr:any)-> any:
+        secrets = [
+            '//h1[contains(@class,"title") or contains(@id,"title") and contains(text(),"第")]/p/text()',
+            '//h1[contains(@class,"biaoti") or contains(@id,"biaoti") and contains(text(),"第"]/p/text()',
+            '//dev[contains(text(),"第") and contains(text(),"章")]/text()',  # 最宽泛搜寻
+            '//h1[contains(text(),"第") and contains(text(),"章")]/text()',  # 最宽泛搜寻
+            '//dev[contains(text(),"第") and contains(text(),"卷")]/text()',  # 最宽泛搜寻
+            '//h1[contains(text(),"第") and contains(text(),"卷")]/text()',  # 最宽泛搜寻
+        ]
+        try:
+            for secret in secrets:
+                title=etr.xpath(secret)
+                if title:
+                    return title[0]
+            return None
+        except Exception as e:
+            Tools.fg(20)
+            print("章节名获取失败:"+str(e))
+            return None
+
 class ChapterUrlExtractor:
-    def __init__(self):
+    def __init__(self,url:str):
         # 识别策略
         self.strategies = [self.strategy_first,self.strategy_second]
 
@@ -62,7 +104,7 @@ class ChapterUrlExtractor:
         }
 
         # url信息
-        self.url = None
+        self.url = url
         self.etree = None
         self.meta_lastest_url = None
 
@@ -87,10 +129,9 @@ class ChapterUrlExtractor:
             return completed_urls
         return urls
 
-    """初始化meta"""
-
+    """尝试初始化meta"""
     def get_meta_info(self) -> bool:
-        """获取网页的meta信息"""
+        """尝试获取网页的meta信息"""
         try:
             # 提取meta标签
             self.meta_author = self.etree.xpath('//meta[contains(@property, "author")]/@content')
@@ -123,8 +164,7 @@ class ChapterUrlExtractor:
             print(f"获取meta信息失败: {e}")
             return False
 
-    def main(self) -> list | None:
-        self.url = input("url:")
+    def main(self) -> tuple[str,list] | None:
         html = Tools.get(self.url)
         self.etree = html
         try:
@@ -136,7 +176,7 @@ class ChapterUrlExtractor:
                 try:
                     urls = strategy()
                     if urls:
-                        return urls
+                        return self.meta_title, urls
                     else:
                         continue
                 except Exception as e:
@@ -211,6 +251,8 @@ class ChapterUrlExtractor:
             return None
 
 
+
+
 if __name__ == '__main__':
-    extractor = ChapterUrlExtractor()  # 创建实例
+    extractor = ChapterUrlExtractor(input("url:"))  # 创建实例
     extractor.main()  # 调用实例方法
