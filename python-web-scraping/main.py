@@ -1,15 +1,13 @@
 """请求"""
-import re
 
-import requests
 #lxml
-from lxml import etree
+
 import os
-from fake_useragent import UserAgent
 
 import threading
 import queue
 import time
+from tools import Tools
 
 class WorkerThread(threading.Thread):
     def __init__(self,thread_id,novel_folder,work_queue,stop_event):
@@ -17,8 +15,6 @@ class WorkerThread(threading.Thread):
         self.thread_id = thread_id
         self.work_queue = work_queue
         self.stop_event = stop_event
-
-
         self.novel_folder=novel_folder
 
 
@@ -30,47 +26,26 @@ class WorkerThread(threading.Thread):
                 #获取任务url
                 url=self.work_queue.get(timeout=1)
                 #标定任务etree
+                """获取信息"""
                 etr=Tools.get(url)
                 info = '\n\n'.join(etr.xpath('//div[@id="content"]/p/text()')[2:])
                 title = Tools.clean_filename(etr.xpath('string(//div[contains(@class,"m-title")])').strip())
                 file_path = os.path.join(self.novel_folder, f'{title}.txt')
+
+                """保存章节"""
                 with open(file_path, 'w', encoding='utf-8') as f:
                     f.write(title + '\n\n')
                     f.write(info)
+                """反馈"""
                 print(f"进程{self.thread_id}>>成功添加:"+title)
+                #标记任务结束
                 self.work_queue.task_done()
-            except queue.Empty:
-                time.sleep(0.5)
+            except queue.Empty:  #进程短暂休眠
+                time.sleep(0.2)
                 continue
         print(f"退出进程 {self.thread_id}")
 
-class Tools:
-    headers = {
-        "User-Agent": UserAgent().random,
-    }
-    @classmethod
-    def fg(cls,num=15):
-        print("="*num)
 
-    @classmethod
-    def clean_filename(cls,filename):
-        illegal_chars = r'[\\/*?:"<>|]'
-        if isinstance(filename, list):
-            filename = filename[0] if filename else "未知标题"
-        return re.sub(illegal_chars, ',', filename)
-    @classmethod
-    def get(cls,url,retry_count=3):
-        for attempt in range(retry_count):
-            try:
-                response = requests.get(url, headers=cls.headers, timeout=10)
-                response.encoding = "utf-8"
-                response.raise_for_status()
-                return etree.HTML(response.text)
-            except requests.RequestException as e:
-                print(f"请求失败 (尝试 {attempt + 1}/{retry_count}): {e}")
-                if attempt < retry_count - 1:
-                    time.sleep(2)
-        return None
 class Scraper:
 
 
@@ -100,25 +75,7 @@ class Scraper:
         Tools.fg()
 
     def scrape_init(self):
-        try:
-            self.url = input("输入首页url:")
-            Tools.fg()
-            self.etr=Tools.get(self.url)
-            print("url添加成功")
-        except Exception as e:
-            print("响应失败:"+str(e))
-            return False
 
-        try:
-            self.book_title = Tools.clean_filename(self.etr.xpath('//div[@class="m-infos"]/h1/text()')[0])
-            if not self.book_title:
-                 raise Exception("书名获取失败")
-            print("书名:《" + self.book_title + "》")
-            self.thread_create(5,self.book_title)
-        except Exception as e:
-            print("书名添加失败:"+str(e))
-            self.book_title = "未知标题"
-            return False
 
         try:
             os.makedirs(self.book_title, exist_ok=True)
