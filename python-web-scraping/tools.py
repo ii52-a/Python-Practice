@@ -151,7 +151,7 @@ class ChapterUrlExtractor:
                 self.meta_author = self.meta_author[0]
                 self.meta_lastest_url = self.meta_lastest_url[0]
             else:
-                raise Exception("获取到meta信息")
+                raise Exception("未获取到meta信息")
 
             Tools.fg()
             print("书名:《" + self.meta_title + "》")
@@ -163,7 +163,9 @@ class ChapterUrlExtractor:
         except Exception as e:
             print(f"获取meta信息失败: {e}")
             return False
-
+    """meta失败,直接获取信息"""
+    def try_get_title(self):
+        self.meta_title=self.etree.xpath('//h1')
     def main(self) -> tuple[str,list] | None:
         html = Tools.get(self.url)
         self.etree = html
@@ -171,7 +173,7 @@ class ChapterUrlExtractor:
             if self.etree is None:
                 raise Exception("etree获取失败，无法识别内容")
             if not self.get_meta_info():
-                raise Exception("meta信息初始化失败")
+                self.try_get_title()
             for strategy in self.strategies:
                 try:
                     urls = strategy()
@@ -193,23 +195,28 @@ class ChapterUrlExtractor:
     """策略1:检索常用目录类名称或id名称"""
 
     def _strategy_first(self) -> list | None:
-        urls=[]
-        secrets=[
-            '//ul[@id="chapter-list" and count(.//a)>20]//a/@href',
-            '//div[@id="play_0" and count(.//a)>20]//a/@href',
-            '//div[.//a[contains(text(),"第") or contains(text(),"卷") or contains(text(),"章")] and count(.//a)>20]//a/@href',
-            '//ul[.//a[contains(text(),"第") or contains(text(),"卷") or contains(text(),"章")] and count(.//a)>20]//a/@href',
-            '//dl[.//a[contains(text(),"第") or contains(text(),"卷") or contains(text(),"章")] and count(.//a)>20]//a/@href',
+        urls:list[str] = []
+        secrets:list[str] = [
+            '//ul[count(.//a[contains(text(),"第") or contains(text(),"卷") or contains(text(),"章")])>30]//a/@href',
+            '//dl[count(.//a[contains(text(),"第") or contains(text(),"卷") or contains(text(),"章")])>30]//a/@href',
         ]
         for secret in secrets:
             urls=self.etree.xpath(secret)
+
             if urls:
+                print(secret)
                 urls=self.check_and_add_url(urls)
                 if Tools.try_to_get(urls[0]):
                     print("策略1:成功获取:" + str(len(urls)) + "章")
                     return urls
             else:
                 continue
+
+        f_paths:list[str] = []
+        for i in f_paths:
+            pass
+
+
         print("策略1检索失败")
         return None
 
@@ -241,7 +248,6 @@ class ChapterUrlExtractor:
                     raise Exception("获取url失败")
 
             urls = self.check_and_add_url(urls)
-            # 过滤错误urls列表
             if Tools.try_to_get(urls[0]):
                 print("策略2:成功获取:" + str(len(urls)) + "章")
                 return urls

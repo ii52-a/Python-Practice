@@ -4,10 +4,10 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
-env/
+.env/
 venv/
 .venv/
-
+.env
 # IDE
 .vscode/
 .idea/
@@ -17,3 +17,11 @@ venv/
 # System
 .DS_Store
 Thumbs.db
+
+#..?
+test
+Downloads
+
+/python-web-scraping_plus/audio.m4s
+/python-web-scraping_plus/video.m4s
+/python-web-scraping_plus/.env
